@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tavus Conversation with Recording</title>
+  <title>Tavus Conversation with Recording - Debug</title>
   <script src="https://unpkg.com/@daily-co/daily-js"></script>
   <style>
     body {
@@ -86,28 +86,125 @@
   <div id="video-frame"></div>
   <div id="status"></div>
   <script>
-    // Function to toggle the visibility of the instructions
-    function toggleInstructions() {
-      const instructionsContent = document.getElementById("instructions-content");
-      instructionsContent.style.display =
-        instructionsContent.style.display === "block" ? "none" : "block";
-    }
+    async function createPersona() {
+      const requestBody = {
+        "persona_name": "Personal Doctor",
+        "pipeline_mode": "full",
+        "system_prompt": "You are a friendly Personal Doctor who know cures to all the disease in the world. In this call, users want to know what are the cures to the user's disease",
+        "context": "User want to know what is the cure to his/her disease. When a user says \"What is the cure to X\", you should acknowledge their disease and use the get_cures tool to return the cures of the disease's cures based on user request",
+        "layers": {
+          "tts": {
+            "voice_settings": {},
+            "external_voice_id": "",
+            "tts_engine": "cartesia",
+            "api_key": "",
+            "playht_user_id": "",
+            "tts_emotion_control": true,
+            "tts_model_name": ""
+          },
+          "llm": {
+            "tools": [
+              {
+                "type": "function",
+                "function": {
+                  "name": "get_cures",
+                  "parameters": {
+                    "type": "object",
+                    "required": ["disease"],
+                    "properties": {
+                      "disease": {
+                        "type": "string",
+                        "description": "The disease which the user wanted to know how to cure"
+                      }
+                    }
+                  },
+                  "description": "Record the user's disease"
+                }
+              }
+            ],
+            "headers": {},
+            "extra_body": {},
+            "base_url": "",
+            "api_key": "",
+            "model": "tavus-llama",
+            "speculative_inference": true
+          },
+          "stt": {
+            "stt_engine": "tavus-advanced",
+            "participant_pause_sensitivity": "high",
+            "participant_interrupt_sensitivity": "high",
+            "smart_turn_detection": true,
+            "hotwords": ""
+          }
+        }
+      };
 
-    async function fetchData() {
       const options = {
         method: 'POST',
         headers: {
-          'x-api-key': '02493e5d16c6410593a03c83d2618f24',
+          'x-api-key': '05de4230dc72410a9518698f50d7e886',
           'Content-Type': 'application/json'
         },
-        body: '{"replica_id":"r6583a465c","persona_id":"pe4ed470c55c"}'
+        body: JSON.stringify(requestBody)
       };
+
       try {
-        const response = await fetch('https://tavusapi.com/v2/conversations', options);
+        const response = await fetch('https://tavusapi.com/v2/personas', options);
+
+        // Check if the response is OK
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+        }
+
+        // Check content type
+        const contentType = response.headers.get('content-type');
+        
+        if (!contentType || !contentType.includes('application/json')) {
+          const responseText = await response.text();
+          throw new Error(`Expected JSON response but got: ${contentType}. Response: ${responseText.substring(0, 200)}...`);
+        }
+
         const data = await response.json();
         return data;
       } catch (err) {
-        console.error(err);
+        console.error('Error creating persona:', err);
+        throw err;
+      }
+    }
+
+    async function createCall() {
+      try {
+        const firstResponse = await createPersona();
+        
+        const personaId = firstResponse.persona_id;
+
+        const callRequestBody = {
+          "replica_id": "r6583a465c",
+          "persona_id": personaId
+        };
+
+        const options = {
+          method: 'POST',
+          headers: {
+            'x-api-key': '05de4230dc72410a9518698f50d7e886',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(callRequestBody)
+        };
+
+        const response = await fetch('https://tavusapi.com/v2/conversations', options);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+        }
+
+        const data = await response.json();
+        return data;
+      } catch (err) {
+        console.error('Error creating call:', err);
+        throw err;
       }
     }
 
@@ -118,9 +215,7 @@
 
     // Join Conversation
     joinButton.addEventListener("click", () => {
-      fetchData().then(response => {
-        // You can access the response here
-        console.log('Accessing response at the bottom:', response);
+      createCall().then(response => {
         const ConversationURL = response.conversation_url;
 
         if (!ConversationURL) {
@@ -148,6 +243,8 @@
         }).catch((error) => {
           alert("Failed to join Conversation: " + error.message)
         });
+      }).catch(error => {
+        alert("Failed to create call: " + error.message);
       });
     });
 
@@ -210,7 +307,7 @@
             };
 
             console.log('Sending echo message:', responseMessage);
-            call.sendAppMessage(responseMessage, '*');
+            callFrame.sendAppMessage(responseMessage, '*');
           } catch (error) {
               console.error('Error in converting time:', error);
           }

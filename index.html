@@ -45,6 +45,9 @@
     input {
       width: 80%;
     }
+    h1 {
+      margin-bottom: 0;
+    }
     .button {
         background-color: #04AA6D; /* Green */
         border: none;
@@ -57,7 +60,6 @@
         margin: 4px 2px;
         cursor: pointer;
     }
-
     .disabled {
         opacity: 0.6;
         cursor: not-allowed;
@@ -79,9 +81,10 @@
 </head>
 <body>
   <h1>Online Doctor</h1>
+  <p>Consult your health problem with our AI doctor! Powered with Tavus.</p>
   <div class="flex">
-    <button class="button" id="join-Conversation">General Doctor Doctor</button>
-    <button class="button disabled">Skin Doctor Doctor</button>
+    <button class="button" id="join-Conversation">General Doctor</button>
+    <button class="button disabled">Skin Doctor</button>
   </div>
   <div id="video-frame"></div>
   <div id="status"></div>

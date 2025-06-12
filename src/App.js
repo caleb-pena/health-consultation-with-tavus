@@ -395,6 +395,7 @@ function App() {
   return (
     <div className="App">
       <div className="top">
+        <img src={require("./logo-tavus.png")} alt="background" className="background-image" />
         <h1>Online Doctor</h1>
         <p>Consult your health problem with our AI doctor! Powered with Tavus.</p>
         <div className="button-container">

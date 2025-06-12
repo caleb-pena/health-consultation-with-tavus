@@ -19,7 +19,7 @@ function App() {
     "epilepsy": "Sodium Valproate"
   };
 
-  const createPersona = async () => {
+  const createGeneralPersona = async () => {
     const requestBody = {
       "persona_name": "Personal Doctor",
       "pipeline_mode": "full",
@@ -104,11 +104,101 @@ function App() {
     }
   };
 
-  const createCall = async () => {
+  const createSkinPersona = async () => {
+    const requestBody = {
+      "persona_name": "Personal Skin Doctor",
+      "pipeline_mode": "full",
+      "system_prompt": "You are a friendly Personal Skin Doctor who know cures to all the disease in the world. In this call, users want to know what are the cures to the user's disease",
+      "context": "User want to know what is the cure to his/her disease. When a user says \"What is the cure to X\", you should acknowledge their disease and use the get_cures tool to return the cures of the disease's cures based on user request",
+      "layers": {
+        "tts": {
+          "voice_settings": {},
+          "external_voice_id": "",
+          "tts_engine": "cartesia",
+          "api_key": "",
+          "playht_user_id": "",
+          "tts_emotion_control": true,
+          "tts_model_name": ""
+        },
+        "llm": {
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "get_cures",
+                "parameters": {
+                  "type": "object",
+                  "required": ["disease"],
+                  "properties": {
+                    "disease": {
+                      "type": "string",
+                      "description": "The disease which the user wanted to know how to cure"
+                    }
+                  }
+                },
+                "description": "Record the user's disease"
+              }
+            }
+          ],
+          "headers": {},
+          "extra_body": {},
+          "base_url": "",
+          "api_key": "",
+          "model": "tavus-llama",
+          "speculative_inference": true
+        },
+        "stt": {
+          "stt_engine": "tavus-advanced",
+          "participant_pause_sensitivity": "high",
+          "participant_interrupt_sensitivity": "high",
+          "smart_turn_detection": true,
+          "hotwords": ""
+        }
+      }
+    };
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'x-api-key': API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    };
+
     try {
-      const firstResponse = await createPersona();
+      const response = await fetch('https://tavusapi.com/v2/personas', options);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
       
-      const personaId = firstResponse.persona_id;
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        throw new Error(`Expected JSON response but got: ${contentType}. Response: ${responseText.substring(0, 200)}...`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (err) {
+      console.error('Error creating persona:', err);
+      throw err;
+    }
+  };
+
+  const createCall = async (selection) => {
+    try {
+      var persona
+      if(selection === "general"){
+        persona = await createGeneralPersona();
+      } else {
+        persona = await createSkinPersona();
+      }
+      
+      const personaId = persona.persona_id;
 
       const callRequestBody = {
         "replica_id": "r6583a465c",
@@ -201,10 +291,10 @@ function App() {
     }
   };
 
-  const joinConversation = () => {
+  const joinConversation = (selection) => {
     setStatus('Creating call...');
     
-    createCall().then(response => {
+    createCall(selection).then(response => {
       const conversationURL = response.conversation_url;
 
       if (!conversationURL) {
@@ -308,8 +398,8 @@ function App() {
         <h1>Online Doctor</h1>
         <p>Consult your health problem with our AI doctor! Powered with Tavus.</p>
         <div className="button-container">
-          <button className="button" onClick={joinConversation}>General Doctor</button>
-          <button className="button disabled">Skin Doctor</button>
+          <button className="button" onClick={() => joinConversation("general")}>General Doctor</button>
+          <button className="button" onClick={() => joinConversation("skin")}>Skin Doctor</button>
         </div>
       </div>
 

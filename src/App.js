@@ -299,13 +299,6 @@ function App() {
           console.log('Cleanup error:', e);
         }
       }
-      if (callFrame) {
-        try {
-          callFrame.leave();
-        } catch (e) {
-          console.log('Cleanup error:', e);
-        }
-      }
     };
   }, []);
 

@@ -27,13 +27,8 @@ function App() {
       "context": "User want to know what is the cure to his/her disease. When a user says \"What is the cure to X\", you should acknowledge their disease and use the get_cures tool to return the cures of the disease's cures based on user request",
       "layers": {
         "tts": {
-          "voice_settings": {},
-          "external_voice_id": "",
           "tts_engine": "cartesia",
-          "api_key": "",
-          "playht_user_id": "",
           "tts_emotion_control": true,
-          "tts_model_name": ""
         },
         "llm": {
           "tools": [
@@ -55,10 +50,6 @@ function App() {
               }
             }
           ],
-          "headers": {},
-          "extra_body": {},
-          "base_url": "",
-          "api_key": "",
           "model": "tavus-llama",
           "speculative_inference": true
         },
@@ -67,7 +58,6 @@ function App() {
           "participant_pause_sensitivity": "high",
           "participant_interrupt_sensitivity": "high",
           "smart_turn_detection": true,
-          "hotwords": ""
         }
       }
     };
@@ -112,13 +102,8 @@ function App() {
       "context": "User want to know what is the cure to his/her disease. When a user says \"What is the cure to X\", you should acknowledge their disease and use the get_cures tool to return the cures of the disease's cures based on user request",
       "layers": {
         "tts": {
-          "voice_settings": {},
-          "external_voice_id": "",
           "tts_engine": "cartesia",
-          "api_key": "",
-          "playht_user_id": "",
           "tts_emotion_control": true,
-          "tts_model_name": ""
         },
         "llm": {
           "tools": [
@@ -140,19 +125,43 @@ function App() {
               }
             }
           ],
-          "headers": {},
-          "extra_body": {},
-          "base_url": "",
-          "api_key": "",
           "model": "tavus-llama",
           "speculative_inference": true
+        },
+        "perception": {
+          "perception_model": "raven-0",
+          "ambient_awareness_queries": [
+            "Is the user have an acne in his or her face?",
+            "Does the user appear distressed or uncomfortable?"
+          ],
+          "perception_tool_prompt": "You have a tool to notify the system when an acne is detected on user face, named `acne_detected`. You MUST use this tool when an acne is detected on user face.",
+          "perception_tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "acne_detected",
+                "description": "Use this function when acne is detected in the image with high confidence",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "have_acne": {
+                      "type": "boolean",
+                      "description": "is acne detected on user's face?"
+                    }
+                  },
+                  "required": [
+                    "have_acne"
+                  ]
+                }
+              }
+            }
+          ]
         },
         "stt": {
           "stt_engine": "tavus-advanced",
           "participant_pause_sensitivity": "high",
           "participant_interrupt_sensitivity": "high",
           "smart_turn_detection": true,
-          "hotwords": ""
         }
       }
     };
@@ -269,6 +278,36 @@ function App() {
             conversation_id: message.conversation_id,
             properties: {
               text: `The cure for ${disease} is ${cure}.`
+            }
+          };
+
+          console.log('Sending echo message:', responseMessage);
+          
+          // Check if callFrame exists before trying to send message
+          const currentCallFrame = callFrameRef.current || callFrame;
+          if (currentCallFrame && typeof currentCallFrame.sendAppMessage === 'function') {
+            currentCallFrame.sendAppMessage(responseMessage, '*');
+            console.log('Message sent successfully');
+          } else {
+            console.error('CallFrame is not available or sendAppMessage method is missing');
+            console.log('CallFrame ref:', callFrameRef.current);
+            console.log('CallFrame state:', callFrame);
+          }
+        } catch (error) {
+          console.error('Error in processing cure request:', error);
+        }
+      }
+
+      if (toolCall.name === 'acne_detected') {
+        try {
+          console.log('Acne detected:');
+          
+          const responseMessage = {
+            message_type: "conversation",
+            event_type: "conversation.echo",
+            conversation_id: message.conversation_id,
+            properties: {
+              text: `I Notice that you have an acne on your face, I suggest to use Topical antibiotics like clindamycin and erythromycin.`
             }
           };
 

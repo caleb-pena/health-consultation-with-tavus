@@ -105,29 +105,6 @@ function App() {
           "tts_engine": "cartesia",
           "tts_emotion_control": true,
         },
-        "llm": {
-          "tools": [
-            {
-              "type": "function",
-              "function": {
-                "name": "get_cures",
-                "parameters": {
-                  "type": "object",
-                  "required": ["disease"],
-                  "properties": {
-                    "disease": {
-                      "type": "string",
-                      "description": "The disease which the user wanted to know how to cure"
-                    }
-                  }
-                },
-                "description": "Record the user's disease"
-              }
-            }
-          ],
-          "model": "tavus-llama",
-          "speculative_inference": true
-        },
         "perception": {
           "perception_model": "raven-0",
           "ambient_awareness_queries": [
@@ -238,6 +215,10 @@ function App() {
     }
   };
 
+  let lastAcneDetectionTime = 0;
+  let isProcessingAcneDetection = false;
+  const ACNE_DETECTION_COOLDOWN = 10000;
+
   const handleAppMessage = async (event) => {
     console.log('Received app message event:', event);
     
@@ -297,34 +278,65 @@ function App() {
           console.error('Error in processing cure request:', error);
         }
       }
+    }
 
-      if (toolCall.name === 'acne_detected') {
+    if (message.message_type === 'conversation' && message.event_type === 'conversation.perception_tool_call') {
+      const perceptionToolCall = message.properties;
+      console.log('Perception Tool call:', perceptionToolCall);
+
+      if (!perceptionToolCall) {
+        console.log('No perception tool call found in message properties');
+        return;
+      }
+
+      if (perceptionToolCall.name === 'acne_detected') {
+        const currentTime = Date.now();
+        
+        // Check if we're still in cooldown period
+        if (currentTime - lastAcneDetectionTime < ACNE_DETECTION_COOLDOWN) {
+          console.log('Acne detection in cooldown period, ignoring...');
+          return;
+        }
+        
+        // Check if we're already processing
+        if (isProcessingAcneDetection) {
+          console.log('Already processing acne detection, ignoring...');
+          return;
+        }
+
         try {
-          console.log('Acne detected:');
+          console.log('Acne detected - processing...');
+          isProcessingAcneDetection = true;
+          lastAcneDetectionTime = currentTime;
           
           const responseMessage = {
             message_type: "conversation",
             event_type: "conversation.echo",
             conversation_id: message.conversation_id,
             properties: {
-              text: `I Notice that you have an acne on your face, I suggest to use Topical antibiotics like clindamycin and erythromycin.`
+              text: `I notice that you have acne on your face. I suggest using topical antibiotics like clindamycin and erythromycin.`
             }
           };
 
           console.log('Sending echo message:', responseMessage);
           
-          // Check if callFrame exists before trying to send message
           const currentCallFrame = callFrameRef.current || callFrame;
           if (currentCallFrame && typeof currentCallFrame.sendAppMessage === 'function') {
             currentCallFrame.sendAppMessage(responseMessage, '*');
             console.log('Message sent successfully');
+            
+            // Reset processing flag after a delay
+            setTimeout(() => {
+              isProcessingAcneDetection = false;
+            }, 2000); // 2 seconds to allow message to be processed
+            
           } else {
             console.error('CallFrame is not available or sendAppMessage method is missing');
-            console.log('CallFrame ref:', callFrameRef.current);
-            console.log('CallFrame state:', callFrame);
+            isProcessingAcneDetection = false; // Reset on error
           }
         } catch (error) {
-          console.error('Error in processing cure request:', error);
+          console.error('Error in processing acne detection:', error);
+          isProcessingAcneDetection = false; // Reset on error
         }
       }
     }

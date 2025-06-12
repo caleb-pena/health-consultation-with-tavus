@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/health-consultation-with-tavus/static/css/main.23cf460a.css",
-    "main.js": "/health-consultation-with-tavus/static/js/main.222c68f3.js",
+    "main.css": "/health-consultation-with-tavus/static/css/main.63bec765.css",
+    "main.js": "/health-consultation-with-tavus/static/js/main.a9cad7d5.js",
     "static/js/453.56f46472.chunk.js": "/health-consultation-with-tavus/static/js/453.56f46472.chunk.js",
     "index.html": "/health-consultation-with-tavus/index.html",
-    "main.23cf460a.css.map": "/health-consultation-with-tavus/static/css/main.23cf460a.css.map",
-    "main.222c68f3.js.map": "/health-consultation-with-tavus/static/js/main.222c68f3.js.map",
+    "main.63bec765.css.map": "/health-consultation-with-tavus/static/css/main.63bec765.css.map",
+    "main.a9cad7d5.js.map": "/health-consultation-with-tavus/static/js/main.a9cad7d5.js.map",
     "453.56f46472.chunk.js.map": "/health-consultation-with-tavus/static/js/453.56f46472.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.23cf460a.css",
-    "static/js/main.222c68f3.js"
+    "static/css/main.63bec765.css",
+    "static/js/main.a9cad7d5.js"
   ]
 }

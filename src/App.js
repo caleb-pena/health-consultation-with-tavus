@@ -6,6 +6,8 @@ function App() {
   const videoFrameRef = useRef(null);
   const [callFrame, setCallFrame] = useState(null);
   const [status, setStatus] = useState('');
+  const [isStatusVisible, setIsStatusVisible] = useState(""); // "", "NEUTRAL", "SUCCESS", "FAILED"
+  const [isConversationVisible, setIsConversationVisible] = useState(false);
   const callFrameRef = useRef(null); // Additional ref to ensure we have the latest callFrame
 
   const API_KEY = process.env.REACT_APP_TAVUS_API_KEY;
@@ -410,13 +412,15 @@ function App() {
   };
 
   const joinConversation = (selection) => {
+    setIsStatusVisible("NEUTRAL");
     setStatus('Creating call...');
     
     createCall(selection).then(response => {
       const conversationURL = response.conversation_url;
 
       if (!conversationURL) {
-        alert(response.message);
+        // alert(response.message);
+        setIsStatusVisible("FAILED");
         setStatus('Failed to get conversation URL');
         return;
       }
@@ -443,6 +447,7 @@ function App() {
         videoFrameRef.current.innerHTML = "";
       }
 
+      setIsStatusVisible("NEUTRAL");
       setStatus('Initializing call frame...');
 
       // Initialize the call frame
@@ -459,31 +464,38 @@ function App() {
       
       // Add other useful event listeners for debugging
       newCallFrame.on('joined-meeting', () => {
-        console.log('Successfully joined meeting');
+        // console.log('Successfully joined meeting');
+        setIsStatusVisible("SUCCESS");
         setStatus('Connected successfully!');
       });
       
       newCallFrame.on('left-meeting', () => {
         console.log('Left meeting');
+        setIsStatusVisible("NEUTRAL");
         setStatus('Disconnected');
         callFrameRef.current = null;
         setCallFrame(null);
       });
       
       newCallFrame.on('error', (error) => {
-        console.error('Call frame error:', error);
+        // console.error('Call frame error:', error);
+        setIsStatusVisible("FAILED");
         setStatus('Connection error');
       });
 
+      setIsStatusVisible("NEUTRAL");
       setStatus('Joining conversation...');
-
+      setIsConversationVisible(true);
+      
       // Join the conversation
       newCallFrame.join({ url: conversationURL, userName: "You" }).then(() => {
-        console.log("Joined Conversation successfully!");
+        // console.log("Joined Conversation successfully!");
+        setIsStatusVisible("SUCCESS");
         setStatus("Connected successfully!");
       }).catch((error) => {
-        console.error("Failed to join conversation:", error);
+        // console.error("Failed to join conversation:", error);
         alert("Failed to join Conversation: " + error.message);
+        setIsStatusVisible("FAILED");
         setStatus("Failed to connect");
         // Clean up on error
         callFrameRef.current = null;
@@ -492,9 +504,12 @@ function App() {
       
     }).catch(error => {
       console.error("Failed to create call:", error);
-      alert("Failed to create call: " + error.message);
+      // alert("Failed to create call: " + error.message);
+      setIsStatusVisible("FAILED");
       setStatus("Failed to create call");
-    });
+    }).finally(() => {
+      setIsStatusVisible("");
+    })
   };
 
   // Cleanup on unmount
@@ -514,20 +529,21 @@ function App() {
     <div className="App">
       <div className="top">
         <img src={require("./logo-tavus.png")} alt="background" className="background-image" />
-        <h1>Online Doctor</h1>
-        <p>Consult your health problem with our AI doctor! Powered with Tavus.</p>
+        <h1>Talk to an AI Doctor, Anytime</h1>
+        <p>Need quick advice? Start a private online consultation with an AI-trained doctor—no waiting room required.</p>
         <div className="button-container">
-          <button className="button" onClick={() => joinConversation("general")}>General Doctor</button>
-          <button className="button" onClick={() => joinConversation("skin")}>Skin Doctor</button>
+          <button className="button" onClick={() => joinConversation("general")}>General Health</button>
+          <button className="button" onClick={() => joinConversation("skin")}>Skin & Dermatology</button>
         </div>
+        <div id="status" className={`fade ${isStatusVisible === "NEUTRAL" ? 'visible neutral' : ( isStatusVisible === "SUCCESS" ? 'visible success' : (isStatusVisible === "SUCCESS" && 'visible failed'))}`}>{status}</div>
       </div>
+      
 
       <div className="frosted-wrapper">
         <div className="frosted-glass"></div>
-        <div ref={videoFrameRef} id="video-frame"></div>
+        <div ref={videoFrameRef} id="video-frame" className={`fade ${isConversationVisible ? 'visible' : ''}`}></div>
       </div>
 
-      <div id="status">{status}</div>
     </div>
   );
 }

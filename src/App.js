@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import DailyIframe from '@daily-co/daily-js';
+import { Toaster } from 'react-hot-toast';
 import './App.css';
+import toast from 'react-hot-toast';
 
 function App() {
   const videoFrameRef = useRef(null);
@@ -30,7 +32,7 @@ function App() {
     "dryskin": "Moisturize regularly, use gentle cleansers, and avoid hot showers"
   };
 
-  const createGeneralPersona = async () => {
+  const createGeneralPersona = async (name) => {
     const requestBody = {
       "persona_name": "Personal Doctor",
       "pipeline_mode": "full",
@@ -209,7 +211,7 @@ function App() {
     }
   };
 
-  const createCall = async (selection) => {
+  const createCall = async (selection, name) => {
     try {
       var persona
       if(selection === "general"){
@@ -222,7 +224,8 @@ function App() {
 
       const callRequestBody = {
         "replica_id": "r6583a465c",
-        "persona_id": personaId
+        "persona_id": personaId,
+        "custom_greeting": "Hey there " + name + ", how can i help you today!",
       };
 
       const options = {
@@ -411,11 +414,21 @@ function App() {
     }
   };
 
+  const nameInputRef = useRef();
+
+  
+
   const joinConversation = (selection) => {
+    const nameValue = nameInputRef.current.value;
+
+    if (nameValue === "") {
+      toast.error('Name cannot be empty');
+      return;
+    }
     setIsStatusVisible("NEUTRAL");
     setStatus('Creating call...');
     
-    createCall(selection).then(response => {
+    createCall(selection, nameValue).then(response => {
       const conversationURL = response.conversation_url;
 
       if (!conversationURL) {
@@ -527,10 +540,13 @@ function App() {
 
   return (
     <div className="App">
+      <Toaster position="top-right" reverseOrder={false} />
       <div className="top">
         <img src={require("./logo-tavus.png")} alt="background" className="background-image" />
         <h1>Talk to an AI Doctor, Anytime</h1>
         <p>Need quick advice? Start a private online consultation with an AI-trained doctor—no waiting room required.</p>
+        <label for="name">Enter your name:</label>
+        <input type="text" id="name" name="name" ref={nameInputRef} />
         <div className="button-container">
           <button className="button" onClick={() => joinConversation("general")}>General Health</button>
           <button className="button" onClick={() => joinConversation("skin")}>Skin & Dermatology</button>

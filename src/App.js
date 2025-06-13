@@ -4,13 +4,24 @@ import { Toaster } from 'react-hot-toast';
 import './App.css';
 import toast from 'react-hot-toast';
 
+const getOrCreateCallObject = () => {
+  // Use a property on window to store the singleton
+  if (!window._dailyCallObject) {
+    window._dailyCallObject = DailyIframe.createCallObject();
+  }
+  return window._dailyCallObject;
+};
+
 function App() {
-  const videoFrameRef = useRef(null);
-  const [callFrame, setCallFrame] = useState(null);
+  const callRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const [remoteParticipants, setRemoteParticipants] = useState({});
+  const [localParticipant, setLocalParticipant] = useState(null);
   const [status, setStatus] = useState('');
   const [isStatusVisible, setIsStatusVisible] = useState(""); // "", "NEUTRAL", "SUCCESS", "FAILED"
   const [isConversationVisible, setIsConversationVisible] = useState(false);
-  const callFrameRef = useRef(null); // Additional ref to ensure we have the latest callFrame
+  const [conversationUrl, setConversationUrl] = useState(null);
+  const [isCameraOn, setIsCameraOn] = useState(true);
 
   const API_KEY = process.env.REACT_APP_TAVUS_API_KEY;
 
@@ -301,15 +312,13 @@ function App() {
 
           console.log('Sending echo message:', responseMessage);
           
-          // Check if callFrame exists before trying to send message
-          const currentCallFrame = callFrameRef.current || callFrame;
-          if (currentCallFrame && typeof currentCallFrame.sendAppMessage === 'function') {
-            currentCallFrame.sendAppMessage(responseMessage, '*');
+          // Use the call object to send app message
+          const call = callRef.current;
+          if (call && typeof call.sendAppMessage === 'function') {
+            call.sendAppMessage(responseMessage, '*');
             console.log('Message sent successfully');
           } else {
-            console.error('CallFrame is not available or sendAppMessage method is missing');
-            console.log('CallFrame ref:', callFrameRef.current);
-            console.log('CallFrame state:', callFrame);
+            console.error('Call object is not available or sendAppMessage method is missing');
           }
         } catch (error) {
           console.error('Error in processing cure request:', error);
@@ -336,15 +345,13 @@ function App() {
 
           console.log('Sending echo message:', responseMessage);
           
-          // Check if callFrame exists before trying to send message
-          const currentCallFrame = callFrameRef.current || callFrame;
-          if (currentCallFrame && typeof currentCallFrame.sendAppMessage === 'function') {
-            currentCallFrame.sendAppMessage(responseMessage, '*');
+          // Use the call object to send app message
+          const call = callRef.current;
+          if (call && typeof call.sendAppMessage === 'function') {
+            call.sendAppMessage(responseMessage, '*');
             console.log('Message sent successfully');
           } else {
-            console.error('CallFrame is not available or sendAppMessage method is missing');
-            console.log('CallFrame ref:', callFrameRef.current);
-            console.log('CallFrame state:', callFrame);
+            console.error('Call object is not available or sendAppMessage method is missing');
           }
         } catch (error) {
           console.error('Error in processing cure request:', error);
@@ -392,9 +399,9 @@ function App() {
 
           console.log('Sending echo message:', responseMessage);
           
-          const currentCallFrame = callFrameRef.current || callFrame;
-          if (currentCallFrame && typeof currentCallFrame.sendAppMessage === 'function') {
-            currentCallFrame.sendAppMessage(responseMessage, '*');
+          const call = callRef.current;
+          if (call && typeof call.sendAppMessage === 'function') {
+            call.sendAppMessage(responseMessage, '*');
             console.log('Message sent successfully');
             
             // Reset processing flag after a delay
@@ -403,7 +410,7 @@ function App() {
             }, 2000); // 2 seconds to allow message to be processed
             
           } else {
-            console.error('CallFrame is not available or sendAppMessage method is missing');
+            console.error('Call object is not available or sendAppMessage method is missing');
             isProcessingAcneDetection = false; // Reset on error
           }
         } catch (error) {
@@ -417,6 +424,110 @@ function App() {
   const nameInputRef = useRef();
 
   
+
+  // Handle participants
+  const updateParticipants = () => {
+    const call = callRef.current;
+    if (!call) return;
+    
+    const participants = call.participants();
+    const remotes = {};
+    let local = null;
+    
+    Object.entries(participants).forEach(([id, p]) => {
+      if (id === 'local') {
+        local = p;
+      } else {
+        remotes[id] = p;
+      }
+    });
+    
+    setRemoteParticipants(remotes);
+    setLocalParticipant(local);
+  };
+
+  // Attach video and audio tracks
+  useEffect(() => {
+    // Handle remote participants
+    Object.entries(remoteParticipants).forEach(([id, p]) => {
+      // Video
+      const videoEl = document.getElementById(`remote-video-${id}`);
+      if (videoEl && p.tracks.video && p.tracks.video.state === 'playable' && p.tracks.video.persistentTrack) {
+        videoEl.srcObject = new MediaStream([p.tracks.video.persistentTrack]);
+      }
+      // Audio
+      const audioEl = document.getElementById(`remote-audio-${id}`);
+      if (audioEl && p.tracks.audio && p.tracks.audio.state === 'playable' && p.tracks.audio.persistentTrack) {
+        audioEl.srcObject = new MediaStream([p.tracks.audio.persistentTrack]);
+      }
+    });
+
+    // Handle local participant
+    if (localParticipant && localVideoRef.current) {
+      const localVideo = localVideoRef.current;
+      if (localParticipant.tracks.video && localParticipant.tracks.video.state === 'playable' && localParticipant.tracks.video.persistentTrack) {
+        localVideo.srcObject = new MediaStream([localParticipant.tracks.video.persistentTrack]);
+      }
+    }
+  }, [remoteParticipants, localParticipant]);
+
+  // Initialize call object when conversation URL is available
+  useEffect(() => {
+    if (!conversationUrl) return;
+
+    // Get or create call object
+    const call = getOrCreateCallObject();
+    callRef.current = call;
+
+    console.log('Joining meeting with URL:', conversationUrl);
+
+    // Join meeting
+    call.join({ url: conversationUrl, userName: "You" }).then(() => {
+      console.log("Joined Conversation successfully!");
+      setIsStatusVisible("SUCCESS");
+      setStatus("Connected successfully!");
+    }).catch((error) => {
+      console.error("Failed to join conversation:", error);
+      setIsStatusVisible("FAILED");
+      setStatus("Failed to connect");
+    });
+
+    // Add event listeners
+    call.on('participant-joined', updateParticipants);
+    call.on('participant-updated', updateParticipants);
+    call.on('participant-left', updateParticipants);
+    call.on('app-message', handleAppMessage);
+    
+    call.on('joined-meeting', () => {
+      setIsStatusVisible("SUCCESS");
+      setStatus('Connected successfully!');
+      setIsConversationVisible(true);
+    });
+    
+    call.on('left-meeting', () => {
+      console.log('Left meeting');
+      setIsStatusVisible("NEUTRAL");
+      setStatus('Disconnected');
+      setIsConversationVisible(false);
+    });
+    
+    call.on('error', (error) => {
+      console.error('Call error:', error);
+      setIsStatusVisible("FAILED");
+      setStatus('Connection error');
+    });
+
+    // Cleanup
+    return () => {
+      if (call) {
+        call.off('participant-joined', updateParticipants);
+        call.off('participant-updated', updateParticipants);
+        call.off('participant-left', updateParticipants);
+        call.off('app-message', handleAppMessage);
+        call.leave();
+      }
+    };
+  }, [conversationUrl]);
 
   const joinConversation = (selection) => {
     const nameValue = nameInputRef.current.value;
@@ -432,105 +543,42 @@ function App() {
       const conversationURL = response.conversation_url;
 
       if (!conversationURL) {
-        // alert(response.message);
         setIsStatusVisible("FAILED");
         setStatus('Failed to get conversation URL');
         return;
       }
 
-      // Clean up previous call frame
-      if (callFrameRef.current) {
-        try {
-          callFrameRef.current.leave();
-        } catch (e) {
-          console.log('Error leaving previous call:', e);
-        }
-        callFrameRef.current = null;
-      }
-
-      if (callFrame) {
-        try {
-          callFrame.leave();
-        } catch (e) {
-          console.log('Error leaving previous call frame:', e);
-        }
-      }
-
-      if (videoFrameRef.current) {
-        videoFrameRef.current.innerHTML = "";
-      }
-
-      setIsStatusVisible("NEUTRAL");
-      setStatus('Initializing call frame...');
-
-      // Initialize the call frame
-      const newCallFrame = DailyIframe.createFrame(videoFrameRef.current, {
-        showLeaveButton: true,
-      });
-      
-      // Store reference immediately
-      callFrameRef.current = newCallFrame;
-      setCallFrame(newCallFrame);
-      
-      // Add event listener
-      newCallFrame.on('app-message', handleAppMessage);
-      
-      // Add other useful event listeners for debugging
-      newCallFrame.on('joined-meeting', () => {
-        // console.log('Successfully joined meeting');
-        setIsStatusVisible("SUCCESS");
-        setStatus('Connected successfully!');
-      });
-      
-      newCallFrame.on('left-meeting', () => {
-        console.log('Left meeting');
-        setIsStatusVisible("NEUTRAL");
-        setStatus('Disconnected');
-        callFrameRef.current = null;
-        setCallFrame(null);
-      });
-      
-      newCallFrame.on('error', (error) => {
-        // console.error('Call frame error:', error);
-        setIsStatusVisible("FAILED");
-        setStatus('Connection error');
-      });
-
       setIsStatusVisible("NEUTRAL");
       setStatus('Joining conversation...');
-      setIsConversationVisible(true);
       
-      // Join the conversation
-      newCallFrame.join({ url: conversationURL, userName: "You" }).then(() => {
-        // console.log("Joined Conversation successfully!");
-        setIsStatusVisible("SUCCESS");
-        setStatus("Connected successfully!");
-      }).catch((error) => {
-        // console.error("Failed to join conversation:", error);
-        alert("Failed to join Conversation: " + error.message);
-        setIsStatusVisible("FAILED");
-        setStatus("Failed to connect");
-        // Clean up on error
-        callFrameRef.current = null;
-        setCallFrame(null);
-      });
+      // Set the conversation URL which will trigger the useEffect to join
+      setConversationUrl(conversationURL);
       
     }).catch(error => {
       console.error("Failed to create call:", error);
-      // alert("Failed to create call: " + error.message);
       setIsStatusVisible("FAILED");
       setStatus("Failed to create call");
-    }).finally(() => {
-      setIsStatusVisible("");
-    })
+    });
+  };
+
+  const leaveConversation = () => {
+    const call = callRef.current;
+    if (call) {
+      call.leave();
+    }
+    setConversationUrl(null);
+    setIsConversationVisible(false);
+    setRemoteParticipants({});
+    setLocalParticipant(null);
   };
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (callFrameRef.current) {
+      const call = callRef.current;
+      if (call) {
         try {
-          callFrameRef.current.leave();
+          call.leave();
         } catch (e) {
           console.log('Cleanup error:', e);
         }
@@ -545,21 +593,118 @@ function App() {
         <img src={require("./logo-tavus.png")} alt="background" className="background-image" />
         <h1>Talk to an AI Doctor, Anytime</h1>
         <p>Need quick advice? Start a private online consultation with an AI-trained doctor—no waiting room required.</p>
-        <label for="name">Enter your name:</label>
-        <input type="text" id="name" name="name" ref={nameInputRef} />
-        <div className="button-container">
-          <button className="button" onClick={() => joinConversation("general")}>General Health</button>
-          <button className="button" onClick={() => joinConversation("skin")}>Skin & Dermatology</button>
+        <div className='input-container'>
+          <label>Enter your name:</label>
+          <input type="text" id="name" name="name" ref={nameInputRef} />
+          <div className="button-container">
+            <button className="button" onClick={() => joinConversation("general")}>General Health</button>
+            <button className="button" onClick={() => joinConversation("skin")}>Skin & Dermatology</button>
+            {isConversationVisible && (
+              <button className="button" onClick={leaveConversation} style={{backgroundColor: '#dc3545'}}>Leave Call</button>
+            )}
+          </div>
+          <div id="status" className={`fade ${isStatusVisible === "NEUTRAL" ? 'visible neutral' : ( isStatusVisible === "SUCCESS" ? 'visible success' : (isStatusVisible === "FAILED" && 'visible failed'))}`}>{status}</div>
         </div>
-        <div id="status" className={`fade ${isStatusVisible === "NEUTRAL" ? 'visible neutral' : ( isStatusVisible === "SUCCESS" ? 'visible success' : (isStatusVisible === "SUCCESS" && 'visible failed'))}`}>{status}</div>
       </div>
       
-
       <div className="frosted-wrapper">
         <div className="frosted-glass"></div>
-        <div ref={videoFrameRef} id="video-frame" className={`fade ${isConversationVisible ? 'visible' : ''}`}></div>
-      </div>
+        <div className={`fade ${isConversationVisible ? 'visible' : ''}`} style={{padding: '20px'}}>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px'}}>
+            {localParticipant && (
+              <div
+                style={{
+                  position: 'relative',
+                  backgroundColor: '#1f2937',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  aspectRatio: '16/9',
+                  minHeight: '200px',
+                  border: '2px solid #3b82f6'
+                }}
+              >
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    transform: 'scaleX(-1)'
+                  }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  bottom: '8px',
+                  left: '8px',
+                  backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}>
+                  You
+                </div>
+                {!isCameraOn && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}>
+                    Camera Off
+                  </div>
+                )}
+              </div>
+            )}
 
+            {Object.entries(remoteParticipants).map(([id, p]) => (
+              <div
+                key={id}
+                style={{
+                  position: 'relative',
+                  backgroundColor: '#1f2937',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  aspectRatio: '16/9',
+                  minHeight: '200px'
+                }}
+              >
+                <video
+                  id={`remote-video-${id}`}
+                  autoPlay
+                  playsInline
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+                <audio id={`remote-audio-${id}`} autoPlay playsInline />
+                <div style={{
+                  position: 'absolute',
+                  bottom: '8px',
+                  left: '8px',
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}>
+                  {p.user_name || `Doctor ${id.slice(-4)}`}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

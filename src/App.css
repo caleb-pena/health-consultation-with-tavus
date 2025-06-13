@@ -27,7 +27,7 @@ p {
   display: flex;
   justify-content: center;
   gap: 16px;
-  margin-bottom: 30px;
+  margin-bottom: 10px;
 }
 
 .button {
@@ -89,12 +89,14 @@ p {
   font-size: 1rem;
   background-color: rgba(255, 255, 255, 0.8);
   border-radius: 2rem;
-  width: 50dvw;
+  width: 25dvw;
   height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 12px rgba(128, 128, 128, 0.3);
+  align-self: center;
+  margin: 0 auto;
 }
 
 .fade {
@@ -136,7 +138,7 @@ p {
 }
 
 #name {
-  margin-bottom: 30px;
+  margin-bottom: 10px;
 }
 
 .background-image {
@@ -152,4 +154,23 @@ p {
 
 .top > *:not(.background-image) {
   z-index: 1;
+}
+
+.input-container {
+  width: 50dvw;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  padding: 20px 0;  
+}
+
+.input-container label {
+  margin-right: 15px;
+}
+
+.input-container input {
+  border: 0;
+  border-radius: 1rem;
+  padding: 5px;
 }

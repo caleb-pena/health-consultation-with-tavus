@@ -1,16 +1,16 @@
 {
   "files": {
-    "main.css": "/health-consultation-with-tavus/static/css/main.d90bff3c.css",
-    "main.js": "/health-consultation-with-tavus/static/js/main.6393095d.js",
-    "static/js/453.56f46472.chunk.js": "/health-consultation-with-tavus/static/js/453.56f46472.chunk.js",
+    "main.css": "/health-consultation-with-tavus/static/css/main.1475492a.css",
+    "main.js": "/health-consultation-with-tavus/static/js/main.ca376bed.js",
+    "static/js/453.784a2014.chunk.js": "/health-consultation-with-tavus/static/js/453.784a2014.chunk.js",
     "static/media/logo-tavus.png": "/health-consultation-with-tavus/static/media/logo-tavus.c4935ae38043e556d517.png",
     "index.html": "/health-consultation-with-tavus/index.html",
-    "main.d90bff3c.css.map": "/health-consultation-with-tavus/static/css/main.d90bff3c.css.map",
-    "main.6393095d.js.map": "/health-consultation-with-tavus/static/js/main.6393095d.js.map",
-    "453.56f46472.chunk.js.map": "/health-consultation-with-tavus/static/js/453.56f46472.chunk.js.map"
+    "main.1475492a.css.map": "/health-consultation-with-tavus/static/css/main.1475492a.css.map",
+    "main.ca376bed.js.map": "/health-consultation-with-tavus/static/js/main.ca376bed.js.map",
+    "453.784a2014.chunk.js.map": "/health-consultation-with-tavus/static/js/453.784a2014.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.d90bff3c.css",
-    "static/js/main.6393095d.js"
+    "static/css/main.1475492a.css",
+    "static/js/main.ca376bed.js"
   ]
 }

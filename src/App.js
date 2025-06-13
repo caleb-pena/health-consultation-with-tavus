@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import DailyIframe from '@daily-co/daily-js';
 import { Toaster } from 'react-hot-toast';
 import './App.css';
@@ -23,24 +23,6 @@ function App() {
   const [conversationUrl, setConversationUrl] = useState(null);
 
   const API_KEY = process.env.REACT_APP_TAVUS_API_KEY;
-
-  const cureFor = {
-    "cold": "Paracetamol",
-    "flu": "Oseltamivir",
-    "asthma": "Salbutamol",
-    "migraine": "Sumatriptan",
-    "depression": "Fluoxetine",
-    "epilepsy": "Sodium Valproate"
-  };
-
-  const cureForSkin = {
-    "pimples": "Use a mild cleanser, avoid touching your face, and apply a benzoyl peroxide cream",
-    "sunburn": "Apply aloe vera or a cooling moisturizer, and stay out of the sun",
-    "wrinkles": "Use sunscreen daily, moisturize, and avoid smoking or tanning",
-    "oilyskin": "Use oil-free products, gentle cleansers, and don't overwash your face",
-    "darkspot": "Try topical treatments like vitamin C, retinoids, or consult for chemical peels",
-    "dryskin": "Moisturize regularly, use gentle cleansers, and avoid hot showers"
-  };
 
   const createGeneralPersona = async (name) => {
     const requestBody = {
@@ -262,11 +244,30 @@ function App() {
     }
   };
 
-  let lastAcneDetectionTime = 0;
-  let isProcessingAcneDetection = false;
+  const lastAcneDetectionTime = useRef(0);
+  const isProcessingAcneDetection = useRef(false);
   const ACNE_DETECTION_COOLDOWN = 10000;
 
-  const handleAppMessage = async (event) => {
+  const handleAppMessage = useCallback(async (event) => {
+
+    const cureFor = {
+      "cold": "Paracetamol",
+      "flu": "Oseltamivir",
+      "asthma": "Salbutamol",
+      "migraine": "Sumatriptan",
+      "depression": "Fluoxetine",
+      "epilepsy": "Sodium Valproate"
+    };
+
+    const cureForSkin = {
+      "pimples": "Use a mild cleanser, avoid touching your face, and apply a benzoyl peroxide cream",
+      "sunburn": "Apply aloe vera or a cooling moisturizer, and stay out of the sun",
+      "wrinkles": "Use sunscreen daily, moisturize, and avoid smoking or tanning",
+      "oilyskin": "Use oil-free products, gentle cleansers, and don't overwash your face",
+      "darkspot": "Try topical treatments like vitamin C, retinoids, or consult for chemical peels",
+      "dryskin": "Moisturize regularly, use gentle cleansers, and avoid hot showers"
+    };
+
     console.log('Received app message event:', event);
     
     const message = event.data;
@@ -371,21 +372,21 @@ function App() {
         const currentTime = Date.now();
         
         // Check if we're still in cooldown period
-        if (currentTime - lastAcneDetectionTime < ACNE_DETECTION_COOLDOWN) {
+        if (currentTime - lastAcneDetectionTime.current < ACNE_DETECTION_COOLDOWN) {
           console.log('Acne detection in cooldown period, ignoring...');
           return;
         }
         
         // Check if we're already processing
-        if (isProcessingAcneDetection) {
+        if (isProcessingAcneDetection.current) {
           console.log('Already processing acne detection, ignoring...');
           return;
         }
 
         try {
           console.log('Acne detected - processing...');
-          isProcessingAcneDetection = true;
-          lastAcneDetectionTime = currentTime;
+          isProcessingAcneDetection.current = true;
+          lastAcneDetectionTime.current = currentTime;
           
           const responseMessage = {
             message_type: "conversation",
@@ -405,24 +406,22 @@ function App() {
             
             // Reset processing flag after a delay
             setTimeout(() => {
-              isProcessingAcneDetection = false;
+              isProcessingAcneDetection.current = false;
             }, 2000); // 2 seconds to allow message to be processed
             
           } else {
             console.error('Call object is not available or sendAppMessage method is missing');
-            isProcessingAcneDetection = false; // Reset on error
+            isProcessingAcneDetection.current = false; // Reset on error
           }
         } catch (error) {
           console.error('Error in processing acne detection:', error);
-          isProcessingAcneDetection = false; // Reset on error
+          isProcessingAcneDetection.current = false; // Reset on error
         }
       }
     }
-  };
+  }, []);
 
   const nameInputRef = useRef();
-
-  
 
   // Handle participants
   const updateParticipants = () => {
@@ -526,7 +525,7 @@ function App() {
         call.leave();
       }
     };
-  }, [conversationUrl]);
+  }, [conversationUrl, handleAppMessage]);
 
   const joinConversation = (selection) => {
     const nameValue = nameInputRef.current.value;

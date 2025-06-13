@@ -19,6 +19,15 @@ function App() {
     "epilepsy": "Sodium Valproate"
   };
 
+  const cureForSkin = {
+    "pimples": "Use a mild cleanser, avoid touching your face, and apply a benzoyl peroxide cream",
+    "sunburn": "Apply aloe vera or a cooling moisturizer, and stay out of the sun",
+    "wrinkles": "Use sunscreen daily, moisturize, and avoid smoking or tanning",
+    "oilyskin": "Use oil-free products, gentle cleansers, and don't overwash your face",
+    "darkspot": "Try topical treatments like vitamin C, retinoids, or consult for chemical peels",
+    "dryskin": "Moisturize regularly, use gentle cleansers, and avoid hot showers"
+  };
+
   const createGeneralPersona = async () => {
     const requestBody = {
       "persona_name": "Personal Doctor",
@@ -99,11 +108,34 @@ function App() {
       "persona_name": "Personal Skin Doctor",
       "pipeline_mode": "full",
       "system_prompt": "You are a friendly Personal Skin Doctor who know cures to all the disease in the world. In this call, users want to know what are the cures to the user's disease",
-      "context": "User want to know what is the cure to his/her disease. When a user says \"What is the cure to X\", you should acknowledge their disease and use the get_cures tool to return the cures of the disease's cures based on user request",
+      "context": "User want to know what is the cure to his/her skin problem. When a user says \"What is the cure to X\" or \"What is the solution to X\", you should acknowledge their disease and use the get_skin_cures tool to return the cures of the disease's cures based on user request",
       "layers": {
         "tts": {
           "tts_engine": "cartesia",
           "tts_emotion_control": true,
+        },
+        "llm": {
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "get_skin_cures",
+                "parameters": {
+                  "type": "object",
+                  "required": ["disease"],
+                  "properties": {
+                    "disease": {
+                      "type": "string",
+                      "description": "The disease which the user wanted to know how to cure"
+                    }
+                  }
+                },
+                "description": "Record the user's disease"
+              }
+            }
+          ],
+          "model": "tavus-llama",
+          "speculative_inference": true
         },
         "perception": {
           "perception_model": "raven-0",
@@ -259,6 +291,41 @@ function App() {
             conversation_id: message.conversation_id,
             properties: {
               text: `The cure for ${disease} is ${cure}.`
+            }
+          };
+
+          console.log('Sending echo message:', responseMessage);
+          
+          // Check if callFrame exists before trying to send message
+          const currentCallFrame = callFrameRef.current || callFrame;
+          if (currentCallFrame && typeof currentCallFrame.sendAppMessage === 'function') {
+            currentCallFrame.sendAppMessage(responseMessage, '*');
+            console.log('Message sent successfully');
+          } else {
+            console.error('CallFrame is not available or sendAppMessage method is missing');
+            console.log('CallFrame ref:', callFrameRef.current);
+            console.log('CallFrame state:', callFrame);
+          }
+        } catch (error) {
+          console.error('Error in processing cure request:', error);
+        }
+      }
+
+      if (toolCall.name === 'get_skin_cures') {
+        try {
+          const args = JSON.parse(toolCall.arguments);
+          const disease = args.disease;
+          console.log('User wanted to know cures for', disease);
+          
+          const diseaseclear = disease.trim().toLowerCase();
+          const cure = cureForSkin[diseaseclear];
+          
+          const responseMessage = {
+            message_type: "conversation",
+            event_type: "conversation.echo",
+            conversation_id: message.conversation_id,
+            properties: {
+              text: `If you're getting ${disease} i suggest to ${cure}.`
             }
           };
 

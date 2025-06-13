@@ -21,7 +21,6 @@ function App() {
   const [isStatusVisible, setIsStatusVisible] = useState(""); // "", "NEUTRAL", "SUCCESS", "FAILED"
   const [isConversationVisible, setIsConversationVisible] = useState(false);
   const [conversationUrl, setConversationUrl] = useState(null);
-  const [isCameraOn, setIsCameraOn] = useState(true);
 
   const API_KEY = process.env.REACT_APP_TAVUS_API_KEY;
 
@@ -647,21 +646,6 @@ function App() {
                 }}>
                   You
                 </div>
-                {!isCameraOn && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    backgroundColor: 'rgba(0,0,0,0.7)',
-                    color: 'white',
-                    padding: '8px 16px',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}>
-                    Camera Off
-                  </div>
-                )}
               </div>
             )}
 
